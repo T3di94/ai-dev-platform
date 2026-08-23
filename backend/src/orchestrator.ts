@@ -49,7 +49,10 @@ export function createPlan(title: string, runtime?: string): PlanStep[] {
   ];
   if (analysis.needsBackend) steps.push({ key: "backend", title: `Implement backend: ${title}`, agent: "Devin", runtime: selectedRuntime, dependsOn: ["plan"], parallelizable: false, risk: analysis.risk });
   if (analysis.needsFrontend) steps.push({ key: "frontend", title: `Implement frontend: ${title}`, agent: "Claude", runtime: selectedRuntime, dependsOn: ["plan", ...(analysis.needsBackend ? ["backend"] : [])], parallelizable: !analysis.needsBackend, risk: analysis.risk });
-  if (analysis.needsSecurity) steps.push({ key: "security", title: `Security review: ${title}`, agent: "Codex", runtime: selectedRuntime, dependsOn: steps.slice(1).map((step) => step.key), parallelizable: false, risk: "high" });
+  if (analysis.needsSecurity) {
+    const implementationDependencies = steps.slice(1).map((step) => step.key);
+    steps.push({ key: "security", title: `Security review: ${title}`, agent: "Codex", runtime: selectedRuntime, dependsOn: ["plan", ...implementationDependencies], parallelizable: false, risk: "high" });
+  }
   if (analysis.needsDocs) steps.push({ key: "docs", title: `Document implementation: ${title}`, agent: "Claude", runtime: selectedRuntime, dependsOn: ["plan"], parallelizable: true, risk: "low" });
   const dependencies = steps.slice(1).map((step) => step.key);
   steps.push({ key: "qa", title: `Verify and test: ${title}`, agent: "Codex", runtime: selectedRuntime, dependsOn: ["plan", ...dependencies], parallelizable: false, risk: analysis.risk });
