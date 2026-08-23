@@ -17,7 +17,7 @@ describe("task execution routing", () => {
   it("executes the local runtime without requiring a cloud API key", async () => {
     const originalFetch = globalThis.fetch;
     const fetchMock = vi.fn(async (..._args: Parameters<typeof fetch>) =>
-      new Response(JSON.stringify({ message: { content: "Local model result" } }), {
+      new Response(JSON.stringify({ response: "Local model result" }), {
         status: 200,
         headers: { "content-type": "application/json" },
       }),
@@ -34,7 +34,7 @@ describe("task execution routing", () => {
       expect(fetchMock).toHaveBeenCalledTimes(1);
       const firstCall = fetchMock.mock.calls[0];
       expect(firstCall).toBeDefined();
-      expect(String(firstCall?.[0])).toContain("/api/chat");
+      expect(String(firstCall?.[0])).toContain("/api/generate");
       await app.close();
     } finally {
       globalThis.fetch = originalFetch;
