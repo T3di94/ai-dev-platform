@@ -69,12 +69,6 @@ jobs:
       - name: Build frontend
         run: pnpm --filter @ai-dev/frontend build
 
-      - name: Start frontend
-        run: pnpm --filter @ai-dev/frontend start > frontend.log 2>&1 &
-
-      - name: Wait for frontend
-        run: pnpm --filter @ai-dev/qa exec playwright test --list
-
       - name: Run E2E
         run: pnpm test:e2e
         env:
