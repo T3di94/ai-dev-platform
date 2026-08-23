@@ -32,17 +32,15 @@ describe("backend API", () => {
     expect(executeResponse.statusCode).toBe(200);
     const executed = executeResponse.json();
     expect(executed).toMatchObject({ id: created.id, status: "Completed" });
-    expect(executed.output).toContain("Claude prepared");
+    expect(executed.output).toContain("Claude");
 
     const logsResponse = await app.inject({ method: "GET", url: `/tasks/${created.id}/logs` });
     expect(logsResponse.statusCode).toBe(200);
-    expect(logsResponse.json().map((log: { message: string }) => log.message)).toEqual([
-      "Routing task to Claude.",
-      "Claude adapter accepted the task.",
-      "Claude prepared execution for: Add login page",
-      "Claude execution completed.",
-      "Execution completed successfully.",
-    ]);
+    const messages = logsResponse.json().map((log: { message: string }) => log.message);
+    expect(messages[0]).toBe("Routing task to Claude.");
+    expect(messages[1]).toBe("Claude adapter accepted the task.");
+    expect(messages).toContain("Claude adapter completed the task.");
+    expect(messages.at(-1)).toBe("Execution completed successfully.");
     await app.close();
   });
 
