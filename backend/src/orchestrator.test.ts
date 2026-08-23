@@ -7,10 +7,11 @@ describe("orchestrator", () => {
     const response = await app.inject({ method: "POST", url: "/orchestrations", payload: { title: "Build login page and authentication API", runtime: "mock" } });
     expect(response.statusCode).toBe(201);
     const orchestration = response.json();
-    expect(orchestration.steps.map((step: { key: string }) => step.key)).toEqual(["plan", "backend", "frontend", "qa"]);
+    expect(orchestration.steps.map((step: { key: string }) => step.key)).toEqual(["plan", "backend", "frontend", "security", "qa"]);
     expect(orchestration.steps[1].dependsOn).toEqual(["plan"]);
     expect(orchestration.steps[2].dependsOn).toEqual(["plan", "backend"]);
     expect(orchestration.steps[3].dependsOn).toEqual(["plan", "backend", "frontend"]);
+    expect(orchestration.verification.required).toBe(true);
     await app.close();
   });
 
