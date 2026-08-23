@@ -16,18 +16,28 @@ describe("task execution routing", () => {
 
   it("executes the local runtime without requiring a cloud API key", async () => {
     const originalFetch = globalThis.fetch;
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ message: { content: "Local model result" } }), { status: 200, headers: { "content-type": "application/json" } }));
+    const fetchMock = vi.fn(async (..._args: Parameters<typeof fetch>) =>
+      new Response(JSON.stringify({ message: { content: "Local model result" } }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
     globalThis.fetch = fetchMock as typeof fetch;
-    const app = buildApp();
-    const create = await app.inject({ method: "POST", url: "/tasks", payload: { title: "Local test", agent: "Codex", runtime: "local" } });
-    expect(create.statusCode).toBe(201);
-    const task = create.json();
-    const response = await app.inject({ method: "POST", url: `/tasks/${task.id}/execute` });
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).toMatchObject({ status: "Completed", runtime: "local", output: "Local model result" });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain("/api/chat");
-    await app.close();
-    globalThis.fetch = originalFetch;
+    try {
+      const app = buildApp();
+      const create = await app.inject({ method: "POST", url: "/tasks", payload: { title: "Local test", agent: "Codex", runtime: "local" } });
+      expect(create.statusCode).toBe(201);
+      const task = create.json();
+      const response = await app.inject({ method: "POST", url: `/tasks/${task.id}/execute` });
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toMatchObject({ status: "Completed", runtime: "local", output: "Local model result" });
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const firstCall = fetchMock.mock.calls[0];
+      expect(firstCall).toBeDefined();
+      expect(String(firstCall?.[0])).toContain("/api/chat");
+      await app.close();
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 });
