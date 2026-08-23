@@ -21,6 +21,7 @@ describe("orchestrator v2 planner", () => {
   it("preserves the existing full-stack dependency contract", () => {
     const steps = createPlan("Build login page and authentication API", "mock");
     expect(steps.map((step) => step.key)).toEqual(["plan", "backend", "frontend", "security", "qa"]);
+    expect(steps.find((step) => step.key === "security")?.dependsOn).toEqual(["plan", "backend", "frontend"]);
     expect(steps.at(-1)?.dependsOn).toEqual(["plan", "backend", "frontend", "security"]);
   });
 });
