@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getAgentAdapter, routeAgent } from "./agent-router";
+import { getAgentAdapter, routeAgent } from "./agent-router.js";
 
 describe("agent router", () => {
   it.each(["Claude", "Devin", "Codex"] as const)("routes %s to its adapter", (agent) => {
