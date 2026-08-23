@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { AGENT_NAMES, AgentName, RUNTIME_NAMES, RuntimeMode, routeAgent } from "./agent-router.js";
 import { JsonStore, StoredTask, StoredExecution } from "./persistence.js";
 import { createOrchestration, getOrchestration, listOrchestrations, saveOrchestration } from "./orchestrator.js";
+import { runtimeConfig } from "./runtime-config.js";
 import { rateLimit, requireAdminToken, validateTaskTitle } from "./security.js";
 
 type TaskStatus = StoredTask["status"];
@@ -100,11 +101,8 @@ export function buildApp(options: { store?: JsonStore } = {}) {
   });
   app.get("/health", async () => ({ status: "ok", service: "backend", persistence: "json" }));
   app.get("/agents", async () => agents);
-  app.get("/runtimes", async () => [
-    { name: "mock", available: true, description: "Deterministic CI-safe runtime" },
-    { name: "local", available: true, description: "Local Ollama runtime; no cloud API required" },
-    { name: "api", available: true, description: "Configured cloud provider runtime" },
-  ]);
+  app.get("/runtimes", async () => RUNTIME_NAMES.map((name) => ({ name, available: true, description: name === "mock" ? "Deterministic CI-safe runtime" : name === "local" ? "Local Ollama runtime; no cloud API required" : "Configured cloud provider runtime" })));
+  app.get("/runtime-config", async () => AGENT_NAMES.flatMap((agent) => RUNTIME_NAMES.map((runtime) => runtimeConfig(agent, runtime))));
   app.get("/tasks", async () => { await initialize; return store.tasks; });
   app.get<{ Params: { id: string } }>("/tasks/:id/logs", async (request, reply) => {
     await initialize;
