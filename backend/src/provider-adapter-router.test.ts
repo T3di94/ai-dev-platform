@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createRoutedProviderExecutor } from "./provider-adapter-router.js";
 
 describe("provider adapter router", () => {
-  it("routes local to Ollama", async () => {
+  it("routes local to Ollama", () => {
     const executor = createRoutedProviderExecutor({ mode: "local", model: "llama3" }, {});
     expect(executor).toBeTypeOf("function");
   });
@@ -12,7 +12,7 @@ describe("provider adapter router", () => {
     await expect(executor({ prompt: "hello" })).resolves.toMatchObject({ text: "mock:hello", provider: "mock" });
   });
 
-  it("routes API providers to their adapters", () => {
+  it("routes Claude and Codex to configured adapters", () => {
     expect(() => createRoutedProviderExecutor({ mode: "api", provider: "claude" }, { ANTHROPIC_API_KEY: "test" })).not.toThrow();
     expect(() => createRoutedProviderExecutor({ mode: "api", provider: "codex" }, { OPENAI_API_KEY: "test" })).not.toThrow();
   });
