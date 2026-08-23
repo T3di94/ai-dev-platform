@@ -1,0 +1,17 @@
+{
+  "name": "ai-dev-platform",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.15.0",
+  "scripts": {
+    "dev": "pnpm --parallel --filter @ai-dev/frontend --filter @ai-dev/backend dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "test:e2e": "pnpm --filter @ai-dev/qa test:e2e"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
