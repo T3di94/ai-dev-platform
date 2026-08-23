@@ -3,9 +3,11 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
+    "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test"
   },
   "devDependencies": {
-    "@playwright/test": "1.52.0"
+    "@playwright/test": "1.52.0",
+    "typescript": "5.8.3"
   }
 }
