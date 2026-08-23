@@ -7,7 +7,8 @@ describe("orchestrator v2 planner", () => {
     expect(analysis.needsBackend).toBe(true);
     expect(analysis.needsSecurity).toBe(true);
     expect(analysis.risk).toBe("high");
-    expect(createPlan("Build login API with password authentication", "mock").map((step) => step.key)).toEqual(["plan", "backend", "security", "qa"]);
+    expect(createPlan("Build login API with password authentication", "mock").map((step) => step.key)).toEqual(["plan", "backend", "frontend", "security", "qa"]);
+    expect(createPlan("Build login API with password authentication", "mock").find((step) => step.key === "security")?.dependsOn).toEqual(["plan", "backend", "frontend"]);
   });
 
   it("keeps independent documentation work parallelizable", () => {
