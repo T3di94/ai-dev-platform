@@ -1,0 +1,13 @@
+{
+  "name": "@ai-dev/qa",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "test": "vitest run",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.52.0",
+    "vitest": "3.2.4"
+  }
+}
