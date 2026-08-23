@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { api, Agent, ExecutionLog, Orchestration, Runtime, RuntimeConfig, RuntimeMode, Task } from "../lib/api";
+import { DevelopmentWorkspace } from "../components/DevelopmentWorkspace";
 
 export default function HomePage() {
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -18,55 +19,24 @@ export default function HomePage() {
   const [orchestrating, setOrchestrating] = useState(false);
 
   async function refreshTasks() { setTasks(await api.getTasks()); }
-
-  useEffect(() => {
-    Promise.all([api.getAgents(), api.getRuntimes(), api.getRuntimeConfig(), api.getTasks()]).then(([loadedAgents, loadedRuntimes, loadedConfig, loadedTasks]) => {
-      setAgents(loadedAgents); setRuntimes(loadedRuntimes); setRuntimeConfig(loadedConfig); setTasks(loadedTasks);
-      if (loadedAgents.length) setSelectedAgent(loadedAgents[0].name);
-      setMessage("All systems operational");
-    }).catch((error) => setMessage(error instanceof Error ? error.message : "Backend unavailable"));
-  }, []);
-
-  useEffect(() => {
-    if (selectedTask === null) { setLogs([]); return; }
-    let cancelled = false;
-    const poll = async () => { try { const next = await api.getTaskLogs(selectedTask); if (!cancelled) setLogs(next); } catch { /* task may have completed */ } };
-    void poll();
-    const timer = window.setInterval(poll, 1000);
-    return () => { cancelled = true; window.clearInterval(timer); };
-  }, [selectedTask]);
+  useEffect(() => { Promise.all([api.getAgents(), api.getRuntimes(), api.getRuntimeConfig(), api.getTasks()]).then(([a, r, c, t]) => { setAgents(a); setRuntimes(r); setRuntimeConfig(c); setTasks(t); if (a.length) setSelectedAgent(a[0].name); setMessage("All systems operational"); }).catch((error) => setMessage(error instanceof Error ? error.message : "Backend unavailable")); }, []);
+  useEffect(() => { if (selectedTask === null) { setLogs([]); return; } let cancelled = false; const poll = async () => { try { const next = await api.getTaskLogs(selectedTask); if (!cancelled) setLogs(next); } catch {} }; void poll(); const timer = window.setInterval(poll, 1000); return () => { cancelled = true; window.clearInterval(timer); }; }, [selectedTask]);
 
   const counts = useMemo(() => ({ total: tasks.length, active: tasks.filter((i) => i.status === "In progress").length, ready: tasks.filter((i) => i.status === "Ready").length, completed: tasks.filter((i) => i.status === "Completed").length }), [tasks]);
   const selectedRuntimeConfig = runtimeConfig.find((item) => item.agent === selectedAgent && item.runtime === selectedRuntime);
   const activeTask = selectedTask === null ? null : tasks.find((item) => item.id === selectedTask) ?? null;
 
-  async function createTask(event: FormEvent) {
-    event.preventDefault(); const title = task.trim(); if (!title) return setMessage("Enter a task before creating it.");
-    try { const created = await api.createTask(title, selectedAgent, selectedRuntime); setTasks((current) => [created, ...current]); setTask(""); setMessage(`Task assigned to ${selectedAgent} via ${selectedRuntime}.`); }
-    catch (error) { setMessage(error instanceof Error ? error.message : "Unable to create task"); }
-  }
-
-  async function runTask(id: number) {
-    setSelectedTask(id); setMessage("Agent execution started…");
-    try { const updated = await api.executeTask(id); setTasks((current) => current.map((item) => item.id === id ? updated : item)); setLogs(updated.logs); setMessage(`Task ${updated.status.toLowerCase()}.`); }
-    catch (error) { setMessage(error instanceof Error ? error.message : "Unable to execute task"); }
-  }
-
-  async function buildAndRunPlan() {
-    const title = task.trim(); if (!title) return setMessage("Describe the project you want the orchestrator to build.");
-    setOrchestrating(true); setOrchestration(null);
-    try { const plan = await api.createOrchestration(title, selectedRuntime); setOrchestration(plan); setTask(""); setMessage(`${plan.steps.length}-step plan created. Running dependencies in order...`); const result = await api.executeOrchestration(plan.id); setOrchestration(result); await refreshTasks(); setMessage(result.status === "Completed" ? "Orchestration completed successfully." : result.error ?? "Orchestration failed."); }
-    catch (error) { setMessage(error instanceof Error ? error.message : "Orchestration failed"); }
-    finally { setOrchestrating(false); }
-  }
+  async function createTask(event: FormEvent) { event.preventDefault(); const title = task.trim(); if (!title) return setMessage("Enter a task before creating it."); try { const created = await api.createTask(title, selectedAgent, selectedRuntime); setTasks((current) => [created, ...current]); setTask(""); setSelectedTask(created.id); setMessage(`Task assigned to ${selectedAgent} via ${selectedRuntime}.`); } catch (error) { setMessage(error instanceof Error ? error.message : "Unable to create task"); } }
+  async function runTask(id: number) { setSelectedTask(id); setMessage("Agent execution started…"); try { const updated = await api.executeTask(id); setTasks((current) => current.map((item) => item.id === id ? updated : item)); setLogs(updated.logs); setMessage(`Task ${updated.status.toLowerCase()}.`); } catch (error) { setMessage(error instanceof Error ? error.message : "Unable to execute task"); } }
+  async function buildAndRunPlan() { const title = task.trim(); if (!title) return setMessage("Describe the project you want the orchestrator to build."); setOrchestrating(true); setOrchestration(null); try { const plan = await api.createOrchestration(title, selectedRuntime); setOrchestration(plan); setTask(""); setMessage(`${plan.steps.length}-step plan created. Running dependencies in order...`); const result = await api.executeOrchestration(plan.id); setOrchestration(result); await refreshTasks(); setMessage(result.status === "Completed" ? "Orchestration completed successfully." : result.error ?? "Orchestration failed."); } catch (error) { setMessage(error instanceof Error ? error.message : "Orchestration failed"); } finally { setOrchestrating(false); } }
 
   return (
     <main className="shell">
       <header className="topbar"><div><div className="eyebrow">AI DEV PLATFORM</div><h1>Agent Workspace</h1></div><div className="status-pill"><span /> {message}</div></header>
-      <section className="hero"><div><p className="eyebrow">ORCHESTRATOR V1</p><h2>Plan, route and execute software work.</h2><p className="muted">Choose an agent and runtime. Local uses Ollama with no cloud key; API uses your configured provider; Mock is deterministic for CI.</p></div><div className="stats"><div><strong>{counts.total}</strong><span>Total tasks</span></div><div><strong>{counts.active}</strong><span>Running</span></div><div><strong>{counts.ready}</strong><span>Ready</span></div><div><strong>{counts.completed}</strong><span>Completed</span></div></div></section>
+      <section className="hero"><div><p className="eyebrow">ORCHESTRATOR V2</p><h2>Plan, route and execute software work.</h2><p className="muted">Choose an agent and runtime. Local uses Ollama with no cloud key; API uses your configured provider; Mock is deterministic for CI.</p></div><div className="stats"><div><strong>{counts.total}</strong><span>Total tasks</span></div><div><strong>{counts.active}</strong><span>Running</span></div><div><strong>{counts.ready}</strong><span>Ready</span></div><div><strong>{counts.completed}</strong><span>Completed</span></div></div></section>
       <section className="agents-grid">{agents.map((agent) => <article className={`agent-card ${selectedAgent === agent.name ? "selected" : ""}`} key={agent.name} onClick={() => setSelectedAgent(agent.name)}><div className="agent-head"><span className="agent-dot" /><span className="agent-status">AVAILABLE</span></div><h3>{agent.name}</h3><p>{agent.role}</p><div className="progress"><span /></div><small>{selectedAgent === agent.name ? "Selected for next execution" : "Click to select"}</small></article>)}</section>
       <section className="workspace-grid"><article className="panel"><div className="panel-title"><div><span className="eyebrow">WORKSPACE</span><h3>Create work</h3></div></div><form onSubmit={createTask} className="task-form"><input value={task} onChange={(e) => setTask(e.target.value)} placeholder="Describe a task or project..." aria-label="Task description" /><select value={selectedRuntime} onChange={(e) => setSelectedRuntime(e.target.value as RuntimeMode)} aria-label="Execution runtime">{runtimes.map((runtime) => { const config = runtimeConfig.find((item) => item.agent === selectedAgent && item.runtime === runtime.name); const enabled = runtime.name !== "api" || Boolean(config?.configured); return <option key={runtime.name} value={runtime.name} disabled={!runtime.available || !enabled}>{runtime.name.toUpperCase()} — {enabled ? runtime.description : "Provider credentials not configured"}</option>; })}</select><select value={selectedAgent} onChange={(e) => setSelectedAgent(e.target.value)} aria-label="Assign agent">{agents.map((agent) => <option key={agent.name}>{agent.name}</option>)}</select><button type="submit">Create task</button><button type="button" disabled={orchestrating} onClick={buildAndRunPlan}>{orchestrating ? "Orchestrating…" : "Build & Run Plan"}</button></form>{selectedRuntimeConfig && <small className="muted">{selectedRuntime.toUpperCase()}: {selectedRuntimeConfig.reason}{selectedRuntimeConfig.model ? ` · model ${selectedRuntimeConfig.model}` : ""}</small>}</article><article className="panel"><div className="panel-title"><div><span className="eyebrow">RUNTIMES</span><h3>Execution modes</h3></div></div><div className="checks">{runtimes.map((runtime) => <div key={runtime.name}><span>{runtime.name.toUpperCase()}</span><b>{runtime.name === "api" ? (runtimeConfig.filter((item) => item.runtime === "api" && item.configured).length ? "READY" : "CONFIGURE KEY") : runtime.available ? "READY" : "UNAVAILABLE"}</b></div>)}</div></article></section>
-      {activeTask && <section className="panel tasks-panel"><div className="panel-title"><div><span className="eyebrow">LIVE EXECUTION</span><h3>{activeTask.title}</h3></div><span className={`badge ${activeTask.status === "In progress" ? "running" : ""}`}>{activeTask.status}</span></div><div className="task-row"><div><strong>{activeTask.agent}</strong><span>{activeTask.runtime.toUpperCase()} runtime</span></div><span className="muted">{logs.length} log events</span></div><div className="logs" aria-live="polite">{logs.length ? logs.map((log, index) => <div className={`log ${log.level}`} key={`${log.timestamp}-${index}`}><time>{new Date(log.timestamp).toLocaleTimeString()}</time><span>{log.message}</span></div>) : <div className="muted">Waiting for execution logs…</div>}</div>{activeTask.output && <pre className="output">{activeTask.output}</pre>}</section>}
+      <DevelopmentWorkspace task={activeTask} logs={logs} orchestration={orchestration} onRun={() => activeTask && runTask(activeTask.id)} />
       {orchestration && <section className="panel tasks-panel"><div className="panel-title"><div><span className="eyebrow">ORCHESTRATION PLAN</span><h3>{orchestration.title}</h3></div><span className={`badge ${orchestration.status === "In progress" ? "running" : ""}`}>{orchestration.status}</span></div><div className="task-list">{orchestration.steps.map((step) => <div className="task-row" key={step.key}><div><strong>{step.title}</strong><span>{step.agent} · {step.runtime.toUpperCase()} · depends on {step.dependsOn.length ? step.dependsOn.join(", ") : "nothing"}</span></div><span className="badge">{step.key}</span></div>)}</div></section>}
       <section className="panel tasks-panel"><div className="panel-title"><div><span className="eyebrow">LIVE QUEUE</span><h3>Tasks</h3></div><span className="muted">{tasks.length} items</span></div><div className="task-list">{tasks.map((item) => <div className="task-row" key={item.id}><div><strong>{item.title}</strong><span>{item.agent} · {item.runtime.toUpperCase()}</span>{item.output && <small>{item.output}</small>}</div><div className="task-actions"><span className={`badge ${item.status === "In progress" ? "running" : ""}`}>{item.status}</span>{item.status !== "In progress" && <button onClick={() => runTask(item.id)} disabled={selectedTask === item.id}>{selectedTask === item.id ? "Running…" : item.status === "Completed" ? "Run again" : "Run"}</button>}</div></div>)}</div></section>
     </main>
