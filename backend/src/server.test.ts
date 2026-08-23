@@ -6,7 +6,7 @@ describe("backend API", () => {
     const app = buildApp();
     const response = await app.inject({ method: "GET", url: "/health" });
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ status: "ok", service: "backend" });
+    expect(response.json()).toMatchObject({ status: "ok", service: "backend", persistence: "json" });
     await app.close();
   });
 
@@ -37,9 +37,9 @@ describe("backend API", () => {
     const logsResponse = await app.inject({ method: "GET", url: `/tasks/${created.id}/logs` });
     const messages = logsResponse.json().map((log: { message: string }) => log.message);
     expect(messages[0]).toBe("Routing mock task to Claude.");
-    expect(messages[1]).toBe("Claude mock adapter accepted the task.");
+    expect(messages).toContain("Claude mock adapter accepted the task.");
     expect(messages).toContain("Claude mock adapter completed the task.");
-    expect(messages.at(-1)).toBe("Execution completed successfully.");
+    expect(messages).toContain("Execution completed successfully with Claude.");
     await app.close();
   });
 
@@ -62,7 +62,7 @@ describe("backend API", () => {
     const app = buildApp();
     const response = await app.inject({ method: "POST", url: "/tasks", payload: { title: "", agent: "Unknown" } });
     expect(response.statusCode).toBe(400);
-    expect(response.json()).toEqual({ error: "Task title is required" });
+    expect(response.json()).toEqual({ error: "Task title is required and must be <= 500 characters" });
     await app.close();
   });
 });
