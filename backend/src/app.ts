@@ -1,5 +1,8 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import { randomUUID } from "node:crypto";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { AGENT_NAMES, AgentName, RUNTIME_NAMES, RuntimeMode, routeAgent } from "./agent-router.js";
 import { JsonStore, StoredTask } from "./persistence.js";
 import { createOrchestration, getOrchestration, listOrchestrations, saveOrchestration } from "./orchestrator.js";
@@ -47,7 +50,7 @@ async function executeTask(store: JsonStore, task: StoredTask): Promise<StoredTa
   for (let agentIndex = 0; agentIndex < fallbackAgents.length; agentIndex += 1) {
     const agent = fallbackAgents[agentIndex];
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-      const execution = { id: crypto.randomUUID(), startedAt: new Date().toISOString(), status: "In progress" as const, attempt, runtime: task.runtime, agent };
+      const execution = { id: randomUUID(), startedAt: new Date().toISOString(), status: "In progress" as const, attempt, runtime: task.runtime, agent };
       task.executions.push(execution);
       addLog(task, "info", `Attempt ${attempt}/${maxAttempts} using ${agent}.`);
       try {
@@ -84,7 +87,8 @@ async function executeTask(store: JsonStore, task: StoredTask): Promise<StoredTa
 
 export function buildApp(options: { store?: JsonStore } = {}) {
   const app = Fastify({ logger: true, bodyLimit: 32 * 1024 });
-  const store = options.store ?? new JsonStore(process.env.NODE_ENV === "test" ? undefined : undefined);
+  const defaultStorePath = process.env.NODE_ENV === "test" ? join(tmpdir(), `ai-dev-platform-test-${randomUUID()}.json`) : undefined;
+  const store = options.store ?? new JsonStore(defaultStorePath);
   const initialize = store.init(store.tasks.length ? [] : seedTasks());
 
   app.register(cors, { origin: true });
