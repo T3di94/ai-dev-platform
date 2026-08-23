@@ -31,7 +31,7 @@ export function createPlan(title: string, runtime?: string): PlanStep[] {
   if (needsBackend) steps.push({ key: "backend", title: `Implement backend: ${title}`, agent: "Devin", runtime: selectedRuntime, dependsOn: ["plan"] });
   if (needsFrontend) steps.push({ key: "frontend", title: `Implement frontend: ${title}`, agent: "Claude", runtime: selectedRuntime, dependsOn: ["plan", ...(needsBackend ? ["backend"] : [])] });
   const dependencies = steps.slice(1).map((step) => step.key);
-  steps.push({ key: "qa", title: `Verify and test: ${title}`, agent: "Codex", runtime: selectedRuntime, dependsOn: dependencies });
+  steps.push({ key: "qa", title: `Verify and test: ${title}`, agent: "Codex", runtime: selectedRuntime, dependsOn: ["plan", ...dependencies] });
   return steps;
 }
 
