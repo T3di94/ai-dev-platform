@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { AGENT_NAMES, AgentName, RUNTIME_NAMES, RuntimeMode, routeAgent } from "./agent-router.js";
-import { JsonStore, StoredTask } from "./persistence.js";
+import { JsonStore, StoredTask, StoredExecution } from "./persistence.js";
 import { createOrchestration, getOrchestration, listOrchestrations, saveOrchestration } from "./orchestrator.js";
 import { rateLimit, requireAdminToken, validateTaskTitle } from "./security.js";
 
@@ -49,8 +49,9 @@ async function executeTask(store: JsonStore, task: StoredTask): Promise<StoredTa
 
   for (let agentIndex = 0; agentIndex < fallbackAgents.length; agentIndex += 1) {
     const agent = fallbackAgents[agentIndex];
+    if (!agent) break;
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-      const execution = { id: randomUUID(), startedAt: new Date().toISOString(), status: "In progress" as const, attempt, runtime: task.runtime, agent };
+      const execution: StoredExecution = { id: randomUUID(), startedAt: new Date().toISOString(), status: "In progress", attempt, runtime: task.runtime, agent };
       task.executions.push(execution);
       addLog(task, "info", `Attempt ${attempt}/${maxAttempts} using ${agent}.`);
       try {
@@ -75,7 +76,8 @@ async function executeTask(store: JsonStore, task: StoredTask): Promise<StoredTa
         await store.save();
       }
     }
-    if (agentIndex < fallbackAgents.length - 1) addLog(task, "info", `Falling back from ${agent} to ${fallbackAgents[agentIndex + 1]}.`);
+    const nextAgent = fallbackAgents[agentIndex + 1];
+    if (nextAgent) addLog(task, "info", `Falling back from ${agent} to ${nextAgent}.`);
   }
 
   task.status = "Failed";
