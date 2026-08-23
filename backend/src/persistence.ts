@@ -1,5 +1,6 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import type { AgentName, RuntimeMode } from "./agent-router.js";
 
 export type StoredExecution = {
   id: string;
@@ -7,8 +8,8 @@ export type StoredExecution = {
   finishedAt?: string;
   status: "In progress" | "Completed" | "Failed";
   attempt: number;
-  runtime: string;
-  agent: string;
+  runtime: RuntimeMode;
+  agent: AgentName;
   output?: string;
   error?: string;
 };
@@ -17,8 +18,8 @@ export type StoredLog = { timestamp: string; level: "info" | "success" | "error"
 export type StoredTask = {
   id: number;
   title: string;
-  agent: string;
-  runtime: string;
+  agent: AgentName;
+  runtime: RuntimeMode;
   status: "Ready" | "In progress" | "Completed" | "Failed";
   output?: string;
   logs: StoredLog[];
