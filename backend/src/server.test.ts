@@ -10,37 +10,44 @@ describe("backend API", () => {
     await app.close();
   });
 
-  it("lists the available agents", async () => {
+  it("lists agents and runtimes", async () => {
     const app = buildApp();
-    const response = await app.inject({ method: "GET", url: "/agents" });
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual([
-      { name: "Claude", role: "Frontend and UI engineering" },
-      { name: "Devin", role: "Backend and API engineering" },
-      { name: "Codex", role: "QA, testing, and regression verification" },
-    ]);
+    const agents = await app.inject({ method: "GET", url: "/agents" });
+    expect(agents.statusCode).toBe(200);
+    expect(agents.json()).toHaveLength(3);
+    const runtimes = await app.inject({ method: "GET", url: "/runtimes" });
+    expect(runtimes.statusCode).toBe(200);
+    expect(runtimes.json().map((item: { name: string }) => item.name)).toEqual(["mock", "local", "api"]);
     await app.close();
   });
 
-  it("executes a task and exposes execution logs", async () => {
+  it("executes a task and exposes runtime-aware logs", async () => {
     const app = buildApp();
-    const createResponse = await app.inject({ method: "POST", url: "/tasks", payload: { title: "Add login page", agent: "Claude" } });
+    const createResponse = await app.inject({ method: "POST", url: "/tasks", payload: { title: "Add login page", agent: "Claude", runtime: "mock" } });
     expect(createResponse.statusCode).toBe(201);
     const created = createResponse.json();
+    expect(created.runtime).toBe("mock");
 
     const executeResponse = await app.inject({ method: "POST", url: `/tasks/${created.id}/execute` });
     expect(executeResponse.statusCode).toBe(200);
     const executed = executeResponse.json();
-    expect(executed).toMatchObject({ id: created.id, status: "Completed" });
+    expect(executed).toMatchObject({ id: created.id, status: "Completed", runtime: "mock" });
     expect(executed.output).toContain("Claude");
 
     const logsResponse = await app.inject({ method: "GET", url: `/tasks/${created.id}/logs` });
-    expect(logsResponse.statusCode).toBe(200);
     const messages = logsResponse.json().map((log: { message: string }) => log.message);
-    expect(messages[0]).toBe("Routing task to Claude.");
-    expect(messages[1]).toBe("Claude adapter accepted the task.");
-    expect(messages).toContain("Claude adapter completed the task.");
+    expect(messages[0]).toBe("Routing mock task to Claude.");
+    expect(messages[1]).toBe("Claude mock adapter accepted the task.");
+    expect(messages).toContain("Claude mock adapter completed the task.");
     expect(messages.at(-1)).toBe("Execution completed successfully.");
+    await app.close();
+  });
+
+  it("rejects invalid runtime", async () => {
+    const app = buildApp();
+    const response = await app.inject({ method: "POST", url: "/tasks", payload: { title: "Test", agent: "Claude", runtime: "remote" } });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ error: "A valid runtime is required" });
     await app.close();
   });
 
